@@ -128,7 +128,7 @@ Now we get the remaining flag
 
 ## Summary
 
-We were able to vulenrate this machine because of the following vulnerabilities:
+We were able to compromise this machine because of the following vulnerabilities:
 
 * Server on port 5000 ended up being vulnerable to XSS via request's headers.
 * Cookie hijacking allowed us to bypass `/dashboard` security panel.
