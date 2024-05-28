@@ -2,7 +2,7 @@
 
 Target ip: 10.10.11.8
 
-## 1) Reconnaissance
+## 1) Enumeration and reconnaissance
 As always we start scanning the target with `nmap`
 ```
 nmap -p- -sS -n -Pn -vvv --min-rate 7000 -oG open_ports 10.10.11.8

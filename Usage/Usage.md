@@ -1,7 +1,7 @@
 # Machine Usage from [Hack The Box](https://www.hackthebox.com/)
 
 Target IP: 10.10.11.18
-## Scanning and reconnaissance
+## Enumeration and reconnaissance
 
 Using nmap we launch a SYN scan on every port (65535) looking for services and export the results to the file named `open_ports`
 ```
